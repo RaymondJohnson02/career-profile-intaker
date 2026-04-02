@@ -21,12 +21,15 @@ export function CompletenessMeter({
     <aside className="rounded-2xl border border-zinc-200/70 bg-white p-4 shadow-[0_12px_40px_-24px_rgba(0,0,0,0.35)]">
       <div>
         <p className="text-sm font-semibold text-zinc-950">Profile Intake</p>
-        <p className="mt-1 text-xs text-zinc-600">
+        <p className="hidden mt-1 text-xs text-zinc-600 lg:block">
           Step {stepDisplay} of {PROFILE_FORM_SECTIONS.length}: {currentLabel}
         </p>
       </div>
 
-      <nav className="mt-4 rounded-xl bg-zinc-50 p-2" aria-label="Form sections">
+      <nav
+        className="mt-4 hidden rounded-xl bg-zinc-50 p-2 lg:block"
+        aria-label="Form sections"
+      >
         <ul className="grid gap-1">
           {PROFILE_FORM_SECTIONS.map((s) => {
             const active = s.id === activeSectionId;

@@ -48,6 +48,15 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
+      if (error.code === "23505") {
+        return NextResponse.json(
+          {
+            error: "This email is already registered. Use a different email or contact HR if you need to update your profile.",
+            code: "EMAIL_DUPLICATE",
+          },
+          { status: 409 }
+        );
+      }
       console.error("[profile POST]", error);
       return NextResponse.json(
         { error: "Could not save your profile. Please try again." },

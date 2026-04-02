@@ -65,15 +65,19 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      const body = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        code?: string;
+      };
       if (!res.ok) {
-        setResultPhase({
-          type: "error",
-          message:
-            typeof body.error === "string"
-              ? body.error
-              : "Could not save your profile. Please try again.",
-        });
+        const message =
+          typeof body.error === "string"
+            ? body.error
+            : "Could not save your profile. Please try again.";
+        if (body.code === "EMAIL_DUPLICATE") {
+          form.setError("email", { message });
+        }
+        setResultPhase({ type: "error", message });
         return;
       }
       setSubmitted(true);
@@ -84,7 +88,7 @@ export default function Home() {
         message: "Network error. Please check your connection and try again.",
       });
     }
-  }, []);
+  }, [form]);
 
   const handleConfirmSave = useCallback(() => {
     if (pendingSave) void performSave(pendingSave);
@@ -216,7 +220,7 @@ export default function Home() {
 
       <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
         <div className="grid gap-6 lg:grid-cols-[280px_1fr] lg:items-start">
-          <div className="hidden lg:order-1 lg:sticky lg:top-6 lg:block">
+          <div className="order-1 mb-4 lg:mb-0 lg:sticky lg:top-6">
             <CompletenessMeter
               result={completeness}
               activeSectionId={activeSectionId}
