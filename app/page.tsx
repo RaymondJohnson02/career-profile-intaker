@@ -6,9 +6,10 @@ import { useForm, useWatch } from "react-hook-form";
 
 import { CompletenessMeter } from "@/app/components/CompletenessMeter";
 import { ProfileForm } from "@/app/components/ProfileForm";
+import { SaveProfileModals, type SaveResultPhase } from "@/app/components/SaveProfileModals";
 import { computeCompleteness } from "@/app/lib/completeness";
 import { PROFILE_FORM_SECTIONS, type ProfileFormSectionId } from "@/app/lib/profileSections";
-import { profileSchema, type ProfileFormInput } from "@/app/lib/profileSchema";
+import { profileSchema, type ProfileFormInput, type ProfileFormValues } from "@/app/lib/profileSchema";
 
 const defaultValues: ProfileFormInput = {
   fullName: "",
@@ -37,11 +38,67 @@ export default function Home() {
   );
   const formId = "career-profile-intake-form";
 
+  const [pendingSave, setPendingSave] = useState<ProfileFormValues | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [resultPhase, setResultPhase] = useState<SaveResultPhase>(null);
+
   const form = useForm<ProfileFormInput>({
     resolver: zodResolver(profileSchema),
     mode: "onChange",
     defaultValues,
   });
+
+  const saveFlowLocked = confirmOpen || resultPhase !== null;
+
+  const requestSave = useCallback((rawValues: ProfileFormInput) => {
+    const values = profileSchema.parse(rawValues);
+    setPendingSave(values);
+    setConfirmOpen(true);
+  }, []);
+
+  const performSave = useCallback(async (values: ProfileFormValues) => {
+    setConfirmOpen(false);
+    setResultPhase("loading");
+    try {
+      const res = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setResultPhase({
+          type: "error",
+          message:
+            typeof body.error === "string"
+              ? body.error
+              : "Could not save your profile. Please try again.",
+        });
+        return;
+      }
+      setSubmitted(true);
+      setResultPhase("success");
+    } catch {
+      setResultPhase({
+        type: "error",
+        message: "Network error. Please check your connection and try again.",
+      });
+    }
+  }, []);
+
+  const handleConfirmSave = useCallback(() => {
+    if (pendingSave) void performSave(pendingSave);
+  }, [pendingSave, performSave]);
+
+  const handleCancelConfirm = useCallback(() => {
+    setConfirmOpen(false);
+    setPendingSave(null);
+  }, []);
+
+  const handleDismissResult = useCallback(() => {
+    setResultPhase(null);
+    setPendingSave(null);
+  }, []);
 
   const values = useWatch({ control: form.control });
 
@@ -118,6 +175,14 @@ export default function Home() {
 
   return (
     <div className="min-h-full bg-[#f6f7fb]">
+      <SaveProfileModals
+        confirmOpen={confirmOpen}
+        onConfirmSave={handleConfirmSave}
+        onCancelConfirm={handleCancelConfirm}
+        resultPhase={resultPhase}
+        onDismissResult={handleDismissResult}
+      />
+
       <header className="bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60">
         <div className="mx-auto w-full max-w-6xl px-4 py-5 sm:px-6">
           <div className="flex items-center justify-between gap-4">
@@ -136,11 +201,12 @@ export default function Home() {
             </div>
             <div className="hidden sm:flex items-center gap-2">
               <button
-                type="submit"
-                form={formId}
+                type="button"
+                aria-busy={resultPhase === "loading"}
+                onClick={() => void form.handleSubmit(requestSave)()}
                 className="inline-flex h-9 items-center justify-center rounded-xl bg-zinc-900 px-3 text-xs font-semibold text-white shadow-sm hover:bg-zinc-800"
               >
-                Save Profile
+                {resultPhase === "loading" ? "Saving…" : "Save Profile"}
               </button>
             </div>
           </div>
@@ -163,12 +229,13 @@ export default function Home() {
               formId={formId}
               form={form}
               isSubmittedSuccessfully={submitted}
-              onValidSubmit={(rawValues) => {
-                profileSchema.parse(rawValues);
-                setSubmitted(true);
-              }}
+              saveFlowLocked={saveFlowLocked}
+              onValidSubmit={requestSave}
               onStartOver={() => {
                 setSubmitted(false);
+                setConfirmOpen(false);
+                setPendingSave(null);
+                setResultPhase(null);
                 form.reset(defaultValues);
               }}
             />

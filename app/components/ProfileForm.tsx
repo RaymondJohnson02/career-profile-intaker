@@ -59,12 +59,14 @@ function FieldShell({
 }) {
   return (
     <div className="grid gap-1.5">
-      <div className="flex items-end justify-between gap-3">
-        <label className="text-sm font-medium text-zinc-900">{label}</label>
-        {hint ? <span className="text-xs text-zinc-500">{hint}</span> : null}
+      <div>
+        <div className="flex items-end justify-between gap-3">
+          <label className="text-sm font-medium text-zinc-900">{label}</label>
+          {hint ? <span className="text-xs text-zinc-500">{hint}</span> : null}
+        </div>
+        {children}
+        {error ? <p className="text-xs text-red-600">{error}</p> : null}
       </div>
-      {children}
-      {error ? <p className="text-xs text-red-600">{error}</p> : null}
     </div>
   );
 }
@@ -338,12 +340,15 @@ export function ProfileForm({
   onValidSubmit,
   isSubmittedSuccessfully,
   onStartOver,
+  saveFlowLocked,
 }: {
   formId: string;
   form: UseFormReturn<ProfileFormInput>;
-  onValidSubmit: (values: ProfileFormInput) => void;
+  onValidSubmit: (values: ProfileFormInput) => void | Promise<void>;
   isSubmittedSuccessfully: boolean;
   onStartOver: () => void;
+  /** True while confirm/save modals are blocking a second submit. */
+  saveFlowLocked?: boolean;
 }) {
   const {
     register,
@@ -412,7 +417,7 @@ export function ProfileForm({
           </FieldShell>
 
           <FieldShell label="Area" error={errors.area?.message}>
-            <div className="mt-0.5 grid grid-cols-1">
+            <div className="grid grid-cols-1">
               <select
                 {...register("area")}
                 className={selectClassName(Boolean(errors.area), !areaValue)}
@@ -467,7 +472,7 @@ export function ProfileForm({
 
         <Section id="profile-section-experience" title="Experience">
           <FieldShell label="Target role" error={errors.targetRole?.message}>
-            <div className="mt-0.5 grid grid-cols-1">
+            <div className="grid grid-cols-1">
               <select
                 {...register("targetRole")}
                 className={selectClassName(Boolean(errors.targetRole), !targetRoleValue)}
@@ -567,7 +572,7 @@ export function ProfileForm({
             label="Highest education"
             error={errors.highestEducation?.message as string | undefined}
           >
-            <div className="mt-0.5 grid grid-cols-1">
+            <div className="grid grid-cols-1">
               <select
                 {...register("highestEducation")}
                 className={selectClassName(
@@ -592,6 +597,58 @@ export function ProfileForm({
         </Section>
 
         <Section id="profile-section-preferences" title="Preferences">
+          <FieldShell
+            label="Expected salary"
+            hint="Indonesian Rupiah"
+            error={errors.expectedSalary?.message as string | undefined}
+          >
+            <div
+              className={[
+                controlWrapperClassName(Boolean(errors.expectedSalary)),
+                "gap-2",
+              ].join(" ")}
+            >
+              <span
+                className="shrink-0 select-none text-sm font-medium tabular-nums text-zinc-600"
+                aria-hidden="true"
+              >
+                Rp.
+              </span>
+              <input
+                {...register("expectedSalary", { valueAsNumber: true })}
+                className={inputClassName()}
+                type="number"
+                inputMode="numeric"
+                min={0}
+                placeholder={phInput("expected salary")}
+                aria-label="Expected salary amount in Rupiah"
+              />
+            </div>
+          </FieldShell>
+
+          <FieldShell
+            label="Notice period"
+            error={errors.noticePeriod?.message as string | undefined}
+          >
+            <div className="grid grid-cols-1">
+              <select
+                {...register("noticePeriod")}
+                className={selectClassName(Boolean(errors.noticePeriod), !noticePeriodValue)}
+                defaultValue=""
+              >
+                <option value="" disabled>
+                  {phChoose("notice period")}
+                </option>
+                {noticePeriodOptions.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+              <SelectChevron />
+            </div>
+          </FieldShell>
+
           <FieldShell
             label="Preferred work type"
             error={errors.preferredWorkType?.message as string | undefined}
@@ -629,45 +686,6 @@ export function ProfileForm({
               })}
             </div>
           </FieldShell>
-
-          <FieldShell
-            label="Expected salary"
-            error={errors.expectedSalary?.message as string | undefined}
-          >
-            <div className={controlWrapperClassName(Boolean(errors.expectedSalary))}>
-              <input
-                {...register("expectedSalary", { valueAsNumber: true })}
-                className={inputClassName()}
-                type="number"
-                inputMode="numeric"
-                min={0}
-                placeholder={phInput("expected salary")}
-              />
-            </div>
-          </FieldShell>
-
-          <FieldShell
-            label="Notice period"
-            error={errors.noticePeriod?.message as string | undefined}
-          >
-            <div className="mt-0.5 grid grid-cols-1">
-              <select
-                {...register("noticePeriod")}
-                className={selectClassName(Boolean(errors.noticePeriod), !noticePeriodValue)}
-                defaultValue=""
-              >
-                <option value="" disabled>
-                  {phChoose("notice period")}
-                </option>
-                {noticePeriodOptions.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-              <SelectChevron />
-            </div>
-          </FieldShell>
         </Section>
       </div>
 
@@ -678,7 +696,7 @@ export function ProfileForm({
           </div>
         ) : (
           <p className="text-xs text-zinc-500">
-            Your data is not saved yet (Supabase will be added later).
+            Publishing saves your profile to Supabase for HR review.
           </p>
         )}
 
@@ -692,10 +710,10 @@ export function ProfileForm({
           </button>
           <button
             type="submit"
-            disabled={!isValid || isSubmitting}
+            disabled={!isValid || isSubmitting || saveFlowLocked}
             className={[
               "inline-flex h-10 items-center justify-center rounded-xl px-5 text-sm font-semibold shadow-sm",
-              !isValid || isSubmitting
+              !isValid || isSubmitting || saveFlowLocked
                 ? "cursor-not-allowed bg-zinc-200 text-zinc-500"
                 : "bg-[#0f2a4a] text-white hover:bg-[#0b223b]",
             ].join(" ")}
