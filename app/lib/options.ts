@@ -56,3 +56,21 @@ export const preferredWorkTypeOptions = [
   { value: "hybrid", label: "Hybrid" },
 ] as const;
 
+export const highestEducationOptions = [
+  { value: "SMA", label: "SMA" },
+  { value: "Diploma", label: "Diploma" },
+  { value: "Bachelor", label: "Bachelor" },
+  { value: "Master", label: "Master" },
+] as const;
+
+export const noticePeriodOptions = [
+  "1 week",
+  "2 week",
+  "1 month",
+  "2 month",
+  "3 month",
+  "4 month",
+  "5 month",
+  "6 month",
+] as const;
+

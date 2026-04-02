@@ -1,28 +1,40 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 
 import { CompletenessMeter } from "@/app/components/CompletenessMeter";
 import { ProfileForm } from "@/app/components/ProfileForm";
 import { computeCompleteness } from "@/app/lib/completeness";
-import { profileSchema, type ProfileFormInput, type ProfileFormValues } from "@/app/lib/profileSchema";
+import { PROFILE_FORM_SECTIONS, type ProfileFormSectionId } from "@/app/lib/profileSections";
+import { profileSchema, type ProfileFormInput } from "@/app/lib/profileSchema";
 
 const defaultValues: ProfileFormInput = {
   fullName: "",
   email: "",
-  targetRole: "",
-  yearsOfExperience: 0,
-  skills: [],
-  shortBio: "",
+  phoneNumber: "",
   area: "",
   address: "",
+  shortBio: "",
+
+  targetRole: "",
+  yearsOfExperience: 0,
+  currentCompany: "",
+  lastPosition: "",
+
+  skills: [],
+  highestEducation: "",
   preferredWorkType: "",
+  expectedSalary: 0,
+  noticePeriod: "",
 };
 
 export default function Home() {
   const [submitted, setSubmitted] = useState(false);
+  const [activeSectionId, setActiveSectionId] = useState<ProfileFormSectionId>(
+    PROFILE_FORM_SECTIONS[0].id
+  );
   const formId = "career-profile-intake-form";
 
   const form = useForm<ProfileFormInput>({
@@ -34,6 +46,75 @@ export default function Home() {
   const values = useWatch({ control: form.control });
 
   const completeness = useMemo(() => computeCompleteness(values ?? {}), [values]);
+
+  /** While true, ignore scroll-spy updates (avoids fighting smooth scroll from nav clicks). */
+  const scrollSpyPausedRef = useRef(false);
+  const navigationGenRef = useRef(0);
+
+  const syncActiveSectionFromScroll = useCallback(() => {
+    if (scrollSpyPausedRef.current) return;
+    const triggerLine = window.innerHeight * 0.35;
+    let chosen: ProfileFormSectionId = PROFILE_FORM_SECTIONS[0].id;
+    for (let i = PROFILE_FORM_SECTIONS.length - 1; i >= 0; i--) {
+      const id = PROFILE_FORM_SECTIONS[i].id;
+      const el = document.getElementById(id);
+      if (!el) continue;
+      const top = el.getBoundingClientRect().top;
+      if (top <= triggerLine) {
+        chosen = id;
+        break;
+      }
+    }
+    setActiveSectionId((prev) => (prev === chosen ? prev : chosen));
+  }, []);
+
+  useEffect(() => {
+    let raf = 0;
+    const onScrollOrResize = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(syncActiveSectionFromScroll);
+    };
+    window.addEventListener("scroll", onScrollOrResize, { passive: true });
+    window.addEventListener("resize", onScrollOrResize);
+    onScrollOrResize();
+    return () => {
+      window.removeEventListener("scroll", onScrollOrResize);
+      window.removeEventListener("resize", onScrollOrResize);
+      cancelAnimationFrame(raf);
+    };
+  }, [syncActiveSectionFromScroll]);
+
+  const navigateToSection = useCallback(
+    (id: ProfileFormSectionId) => {
+      navigationGenRef.current += 1;
+      const gen = navigationGenRef.current;
+      scrollSpyPausedRef.current = true;
+      setActiveSectionId(id);
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+      let completed = false;
+      const finishProgrammaticScroll = () => {
+        if (completed || navigationGenRef.current !== gen) return;
+        completed = true;
+        scrollSpyPausedRef.current = false;
+        syncActiveSectionFromScroll();
+      };
+
+      const fallbackMs = 750;
+      const t = window.setTimeout(finishProgrammaticScroll, fallbackMs);
+      if ("onscrollend" in window) {
+        window.addEventListener(
+          "scrollend",
+          () => {
+            window.clearTimeout(t);
+            finishProgrammaticScroll();
+          },
+          { once: true }
+        );
+      }
+    },
+    [syncActiveSectionFromScroll]
+  );
 
   return (
     <div className="min-h-full bg-[#f6f7fb]">
@@ -69,8 +150,12 @@ export default function Home() {
 
       <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
         <div className="grid gap-6 lg:grid-cols-[280px_1fr] lg:items-start">
-          <div className="lg:order-1 lg:sticky lg:top-6">
-            <CompletenessMeter result={completeness} />
+          <div className="hidden lg:order-1 lg:sticky lg:top-6 lg:block">
+            <CompletenessMeter
+              result={completeness}
+              activeSectionId={activeSectionId}
+              onSectionNavigate={navigateToSection}
+            />
           </div>
 
           <div className="lg:order-2">

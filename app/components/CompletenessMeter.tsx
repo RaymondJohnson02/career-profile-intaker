@@ -1,48 +1,60 @@
 "use client";
 
 import type { CompletenessResult } from "@/app/lib/completeness";
+import { PROFILE_FORM_SECTIONS, type ProfileFormSectionId } from "@/app/lib/profileSections";
 
-const steps = [
-  { label: "Personal info", active: true },
-  { label: "Experience", active: false },
-  { label: "Education", active: false },
-  { label: "Skills", active: false },
-  { label: "Preferences", active: false },
-] as const;
+export function CompletenessMeter({
+  result,
+  activeSectionId,
+  onSectionNavigate,
+}: {
+  result: CompletenessResult;
+  activeSectionId: ProfileFormSectionId;
+  onSectionNavigate: (id: ProfileFormSectionId) => void;
+}) {
+  const activeIndex = PROFILE_FORM_SECTIONS.findIndex((s) => s.id === activeSectionId);
+  const stepDisplay = activeIndex >= 0 ? activeIndex + 1 : 1;
+  const currentLabel =
+    activeIndex >= 0 ? PROFILE_FORM_SECTIONS[activeIndex].label : PROFILE_FORM_SECTIONS[0].label;
 
-export function CompletenessMeter({ result }: { result: CompletenessResult }) {
   return (
     <aside className="rounded-2xl border border-zinc-200/70 bg-white p-4 shadow-[0_12px_40px_-24px_rgba(0,0,0,0.35)]">
       <div>
         <p className="text-sm font-semibold text-zinc-950">Profile Intake</p>
         <p className="mt-1 text-xs text-zinc-600">
-          Step 1 of 5: Experience &amp; Personal Branding
+          Step {stepDisplay} of {PROFILE_FORM_SECTIONS.length}: {currentLabel}
         </p>
       </div>
 
-      <nav className="mt-4 rounded-xl bg-zinc-50 p-2">
+      <nav className="mt-4 rounded-xl bg-zinc-50 p-2" aria-label="Form sections">
         <ul className="grid gap-1">
-          {steps.map((s) => (
-            <li key={s.label}>
-              <div
-                className={[
-                  "flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm",
-                  s.active ? "bg-white shadow-sm" : "text-zinc-700",
-                ].join(" ")}
-              >
-                <span
+          {PROFILE_FORM_SECTIONS.map((s) => {
+            const active = s.id === activeSectionId;
+            return (
+              <li key={s.id}>
+                <button
+                  type="button"
+                  onClick={() => onSectionNavigate(s.id)}
                   className={[
-                    "h-2 w-2 rounded-full",
-                    s.active ? "bg-emerald-500" : "bg-zinc-300",
+                    "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors",
+                    active
+                      ? "bg-white font-semibold text-zinc-950 shadow-sm"
+                      : "text-zinc-700 hover:bg-zinc-100/80",
                   ].join(" ")}
-                  aria-hidden="true"
-                />
-                <span className={s.active ? "font-semibold text-zinc-950" : ""}>
-                  {s.label}
-                </span>
-              </div>
-            </li>
-          ))}
+                  aria-current={active ? "location" : undefined}
+                >
+                  <span
+                    className={[
+                      "h-2 w-2 shrink-0 rounded-full",
+                      active ? "bg-emerald-500" : "bg-zinc-300",
+                    ].join(" ")}
+                    aria-hidden="true"
+                  />
+                  <span>{s.label}</span>
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </nav>
 
@@ -69,4 +81,3 @@ export function CompletenessMeter({ result }: { result: CompletenessResult }) {
     </aside>
   );
 }
-
