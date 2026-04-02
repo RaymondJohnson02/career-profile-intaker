@@ -80,7 +80,9 @@ export default function Home() {
         setResultPhase({ type: "error", message });
         return;
       }
-      setSubmitted(true);
+      setSubmitted(false);
+      setPendingSave(null);
+      form.reset(defaultValues);
       setResultPhase("success");
     } catch {
       setResultPhase({
