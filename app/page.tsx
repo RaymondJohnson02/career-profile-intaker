@@ -1,63 +1,93 @@
-import Image from "next/image";
+"use client";
+
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMemo, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
+
+import { CompletenessMeter } from "@/app/components/CompletenessMeter";
+import { ProfileForm } from "@/app/components/ProfileForm";
+import { computeCompleteness } from "@/app/lib/completeness";
+import { profileSchema, type ProfileFormInput, type ProfileFormValues } from "@/app/lib/profileSchema";
+
+const defaultValues: ProfileFormInput = {
+  fullName: "",
+  email: "",
+  targetRole: "",
+  yearsOfExperience: 0,
+  skills: [],
+  shortBio: "",
+  area: "",
+  address: "",
+  preferredWorkType: "",
+};
 
 export default function Home() {
+  const [submitted, setSubmitted] = useState(false);
+  const formId = "career-profile-intake-form";
+
+  const form = useForm<ProfileFormInput>({
+    resolver: zodResolver(profileSchema),
+    mode: "onChange",
+    defaultValues,
+  });
+
+  const values = useWatch({ control: form.control });
+
+  const completeness = useMemo(() => computeCompleteness(values ?? {}), [values]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="min-h-full bg-[#f6f7fb]">
+      <header className="bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+        <div className="mx-auto w-full max-w-6xl px-4 py-5 sm:px-6">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-zinc-900 text-sm font-semibold text-white shadow-sm">
+                CPI
+              </div>
+              <div>
+                <h1 className="text-sm font-semibold tracking-tight text-zinc-950 sm:text-base">
+                  Career Profile Intake
+                </h1>
+                <p className="mt-0.5 text-xs text-zinc-600 sm:text-sm">
+                  Define your professional narrative and track completeness.
+                </p>
+              </div>
+            </div>
+            <div className="hidden sm:flex items-center gap-2">
+              <button
+                type="submit"
+                form={formId}
+                className="inline-flex h-9 items-center justify-center rounded-xl bg-zinc-900 px-3 text-xs font-semibold text-white shadow-sm hover:bg-zinc-800"
+              >
+                Save Profile
+              </button>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+        <div className="h-px w-full bg-zinc-200/70" />
+      </header>
+
+      <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
+        <div className="grid gap-6 lg:grid-cols-[280px_1fr] lg:items-start">
+          <div className="lg:order-1 lg:sticky lg:top-6">
+            <CompletenessMeter result={completeness} />
+          </div>
+
+          <div className="lg:order-2">
+            <ProfileForm
+              formId={formId}
+              form={form}
+              isSubmittedSuccessfully={submitted}
+              onValidSubmit={(rawValues) => {
+                profileSchema.parse(rawValues);
+                setSubmitted(true);
+              }}
+              onStartOver={() => {
+                setSubmitted(false);
+                form.reset(defaultValues);
+              }}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          </div>
         </div>
       </main>
     </div>
